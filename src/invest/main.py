@@ -1,11 +1,11 @@
 import typer
+from typing import List, Optional, Annotated
 from rich import print
-from typing import Annotated
 import random
 
 data  = {
         "name" : "Rick",
-        "age" : 42,
+        "age" : 44,
         "items" : [{"name": "Portal Gun"}, {"name": "Plumbus"}],
         "active": True,
         "affiliation": None
@@ -19,12 +19,13 @@ def get_name() -> str :
 
 # arguments should probably get their own data container thing? 
 @app.command()
-def main(name: Annotated[str, typer.Argument(default_factory=get_name, help="provide a name for a personalized greeting")]):
+def main(name: Annotated[
+	 str,
+	typer.Argument(
+         default_factory=get_name
+         , help="provide a name for a personalized greeting")
+         ]):
 
     print(f"Hello, {name}, here's the data")
     print(data)
-
-
-if __name__ == "__main__":
-    app()
 
