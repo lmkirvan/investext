@@ -1,31 +1,53 @@
 import typer
-from typing import List, Optional, Annotated
+from typing import List, Optional, Annotated, Any
 from rich import print
-import random
+from pathlib import Path
 
-data  = {
-        "name" : "Rick",
-        "age" : 44,
-        "items" : [{"name": "Portal Gun"}, {"name": "Plumbus"}],
-        "active": True,
-        "affiliation": None
-}
+app  = typer.Typer()
 
-app = typer.Typer()
+def bin_mask(l: List[Any], p: list[bool]):
+    assert len(l) == len(p)
 
-# you can use a function or a just a variable to provide default arguments 
-def get_name() -> str :
-    return random.choice(["Dave", "Lewis", "Beatrice"])
+    return [item for item, keep in zip(l, p) if keep] 
 
-# arguments should probably get their own data container thing? 
-@app.command()
-def main(name: Annotated[
-	 str,
-	typer.Argument(
-         default_factory=get_name
-         , help="provide a name for a personalized greeting")
-         ]):
 
-    print(f"Hello, {name}, here's the data")
-    print(data)
+@app.command(name = 'setup')
+def setup(
+    path: Annotated[
+        Path, 
+        typer.Option(
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            resolve_path=True,
+        ), 
+    ],
+    extension: str = "txt",
+    verbose: bool = False
+):
 
+    if verbose:
+        v = print
+    else:
+        v = None
+ 
+    structure = {}
+    for root, dir, file in path.walk(on_error=v):
+
+        flgl = [True if f.endswith(extension) else False for f in file]
+        structure[str(root)] = bin_mask(file, flgl)
+        # we onlyl care about the roots with some kind of text files in them 
+
+    structure = {k: v for k,v in structure.items() if len(v) == 0} 
+
+    print(len(structure))
+    
+
+
+
+
+
+
+@app.callback()
+def create():
+    pass
