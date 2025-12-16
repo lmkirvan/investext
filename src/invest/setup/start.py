@@ -20,7 +20,7 @@ def read_whole_folder(root: str, items: List[str]):
     p = Path(root)
     for i in items:
         text = (p / i).read_text()
-        res[i] = text
+        res[i] = {"root": root, "file": i, "text": text}
 
     return res
     
@@ -63,16 +63,18 @@ def setup(
     # we onlyl care about the roots with some kind of text files in them 
     structure = {k: v for k,v in structure.items() if len(v) != 0}  
 
-    res = {}
-
+    res = {} 
     for k,v in structure.items():
         res[k] = read_whole_folder(k, v)
 
-    with tf.NamedTemporaryFile(mode = 'w+t', delete=True, ) as fp:
+    print(res)     
+    dfs = []
+    for v in res.values(): dfs.append(  pl.from_dicts( v  ) )
 
-        data = pl.from_dict(res, schema=['root', 'file'])
-        print(data)
-        data = (data.explode('file'))
+    
+    data = pl.concat(dfs)
+    
+    with tf.NamedTemporaryFile(mode = 'w+t', delete=True, ) as fp:
         data.write_json(fp.name)
         con = ddb.connect(".data.db")
         con.sql(f"CREATE TABLE main AS SELECT * FROM read_json('{fp.name}', maximum_object_size=1073741824)")
