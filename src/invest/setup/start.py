@@ -16,14 +16,11 @@ def bin_mask(l: List[Any], p: list[bool]):
 
 
 def read_whole_folder(root: str, items: List[str]):
-    res = {} 
+    text = []
     p = Path(root)
     for i in items:
-        text = (p / i).read_text()
-        res[i] = {"root": root, "file": i, "text": text}
-
-    return res
-    
+        text.append((p / i).read_text())
+    return {"root": root, 'files': items, "text": text}
 
 @app.command(name = 'setup')
 def setup(
@@ -63,14 +60,15 @@ def setup(
     # we onlyl care about the roots with some kind of text files in them 
     structure = {k: v for k,v in structure.items() if len(v) != 0}  
 
+
+    ## need to make th is a columnwise thing so change the read_whole_folder thing to read from folder
+    ## get a list that can be flattened back I think.
     res = {} 
     for k,v in structure.items():
         res[k] = read_whole_folder(k, v)
-
-    print(res)     
+    
     dfs = []
-    for v in res.values(): dfs.append(  pl.from_dicts( v  ) )
-
+    for v in res.values(): dfs.append(pl.from_dicts(v))
     
     data = pl.concat(dfs)
     
