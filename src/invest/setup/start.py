@@ -71,10 +71,6 @@ def setup(
     for v in res.values(): dfs.append(pl.from_dicts(v))
     
     data = pl.concat(dfs)
-    
-    with tf.NamedTemporaryFile(mode = 'w+t', delete=True, ) as fp:
-        data.write_json(fp.name)
-        con = ddb.connect(".data.db")
-        con.sql(f"CREATE TABLE main AS SELECT * FROM read_json('{fp.name}', maximum_object_size=1073741824)")
-        con.close()
-        
+    con = ddb.connect(".data.db")
+    con.sql("CREATE TABLE main AS SELECT * FROM data")
+    con.close() 
