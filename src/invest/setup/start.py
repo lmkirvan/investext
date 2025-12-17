@@ -46,7 +46,6 @@ def setup(
         if db.exists():
             db.unlink()
 
-
     if verbose:
         v = print
     else:
@@ -54,15 +53,11 @@ def setup(
  
     structure = {}
     for root, _, file in path.walk(on_error=v):
-
         flgl = [True if f.endswith(extension) else False for f in file]
         structure[str(root)] = bin_mask(file, flgl)
-    # we onlyl care about the roots with some kind of text files in them 
+   
     structure = {k: v for k,v in structure.items() if len(v) != 0}  
 
-
-    ## need to make th is a columnwise thing so change the read_whole_folder thing to read from folder
-    ## get a list that can be flattened back I think.
     res = {} 
     for k,v in structure.items():
         res[k] = read_whole_folder(k, v)
@@ -71,6 +66,7 @@ def setup(
     for v in res.values(): dfs.append(pl.from_dicts(v))
     
     data = pl.concat(dfs)
+    data = data.with_row_index(name = "id") 
     con = ddb.connect(".data.db")
     con.sql("CREATE TABLE main AS SELECT * FROM data")
     con.close() 
