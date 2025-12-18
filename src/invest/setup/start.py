@@ -2,11 +2,10 @@ import typer
 from typing import List, Annotated, Any
 from rich import print
 from pathlib import Path
-import json 
 import duckdb as ddb 
-import tempfile as tf 
 import polars as pl 
-
+import os
+from datetime  import datetime
 
 app  = typer.Typer()
 
@@ -69,4 +68,10 @@ def setup(
     data = data.with_row_index(name = "id") 
     con = ddb.connect(".data.db")
     con.sql("CREATE TABLE main AS SELECT * FROM data")
-    con.close() 
+    con.close()
+
+    calling_dir = Path(os.getcwd())
+    date = datetime.now()
+    
+    with open(calling_dir / ".invest",  'a') as file:
+        file.write(f"SETUP=yes\nSETUPDT={date}\nDBNAME=.datab.db\n")
