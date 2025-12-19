@@ -21,11 +21,11 @@ def read_whole_folder(root: str, items: List[str]):
         text.append((p / i).read_text())
     return {"root": root, 'files': items, "text": text}
 
-@app.command(name = 'setup')
-def setup(
+@app.command()
+def build(
     path: Annotated[
         Path, 
-        typer.Option(
+        typer.Argument(
             exists=True,
             file_okay=False,
             dir_okay=True,

@@ -1,11 +1,7 @@
 import typer
 
-from .setup import app as setup_app
+from .setup.setup import app as setup_app
+app = typer.Typer()
 
-app  = typer.Typer()
+app.add_typer(setup_app, name="setup")
 
-app.add_typer(setup_app)
-
-@app.callback()
-def create():
-    pass

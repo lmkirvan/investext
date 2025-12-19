@@ -1,4 +1,6 @@
-import tomllib 
+import tomllib
+from typing import Annotated
+from pathlib import Path
 import typer
 import os
 
@@ -8,13 +10,13 @@ import os
 def check_setup():
     assert os.path.isfile('.invest'), ".invest is missing are you in the project root directory"
 
-    file = open(".venv", "r")
+    file = open(".invest", "r")
     lines = file.readlines()
 
     set = False 
     for line in lines: 
         if line.startswith('SETUP'):
-            if line.endswith("yes"):
+            if line.strip().endswith("yes"):
                 set = True
 
     assert set, "Looks like you haven't setup the database yet" 
@@ -22,9 +24,30 @@ def check_setup():
 
 app = typer.Typer(callback=check_setup)
 
-@app.command(name = "markdown")
-def markdown():
-    pass
+@app.command()
+def markdown(
+    config: Annotated[
+        Path,
+        typer.Argument(
+            exists=True,
+            file_okay=True,
+            dir_okay=False,
+            resolve_path=True,
+            callback=check_setup, 
+        ),
+    ],
+    verbose: bool =  False,
+    force: bool = False ):
+
+    config = Path(config) 
+    assert config.exists(), "did you mistype the config?"
+
+    with config.open( "rb") as f:
+        con_par = tomllib.load(f)
+
+    if verbose:
+        print(con_par) 
+
 
 
 
