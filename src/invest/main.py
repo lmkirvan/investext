@@ -1,7 +1,7 @@
 import typer
 
-from .setup.setup import app as setup_app
-app = typer.Typer()
+from .setup import app as setup_app
 
+app = typer.Typer()
 app.add_typer(setup_app, name="setup")
 

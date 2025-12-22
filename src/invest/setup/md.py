@@ -1,12 +1,9 @@
 import tomllib
-from typing import Annotated
+from typing import Annotated, Optional
 from pathlib import Path
 import typer
 import os
 
-# I think this is kidn of stupid, but maybe I'll just let it ride for now. 
-# the basic idea is make sure that commands run from the root directoy
-# this will be handled differently in an actual application I suppose 
 def check_setup():
     assert os.path.isfile('.invest'), ".invest is missing are you in the project root directory"
 
@@ -22,12 +19,12 @@ def check_setup():
     assert set, "Looks like you haven't setup the database yet" 
 
 
-app = typer.Typer(callback=check_setup)
+app = typer.Typer()
 
 @app.command()
 def markdown(
     config: Annotated[
-        Path,
+        Optional[Path],
         typer.Argument(
             exists=True,
             file_okay=True,
@@ -37,17 +34,16 @@ def markdown(
         ),
     ],
     verbose: bool =  False,
-    force: bool = False ):
+    ):
 
-    config = Path(config) 
-    assert config.exists(), "did you mistype the config?"
-
-    with config.open( "rb") as f:
-        con_par = tomllib.load(f)
-
-    if verbose:
-        print(con_par) 
-
+    if config is None:
+        print("No config provided") 
+        raise typer.Abort()
+    if config.is_file() and config.suffix == "toml":
+        with config.open( "rb") as f:
+            con_par = tomllib.load(f)
+    else: 
+        print("Couldn't find the file. Where's the toml at?")
 
 
 
