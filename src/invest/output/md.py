@@ -18,13 +18,15 @@ class Line:
         return(str(self.tag))
 
 #there has to be a way to make the types work here, but not for me to figure out at the moment
-def get_raw_docs() -> Optional[List[Any]]:
+def get_lines(): #-> Optional[List[str]]:
+
     con = ddb.connect(".data.db")
     docs = con.sql("SELECT text FROM main;").fetchall() 
     con.close()
 
+    docs = [doc[0].split("\n") for doc in docs]
     return docs
-
+        
 app = typer.Typer()
 
 @app.command()
@@ -52,6 +54,10 @@ def markdown(
 
     Tags = Enum("starts_with", con_par["starts_with"])
 
+    docs = get_lines()
+
+    print(docs[9])
+
     def tag_line(line: str):
         line = line.strip()
         for t in Tags:
@@ -70,6 +76,7 @@ def markdown(
             res.append(tag_line(line))
         return res
 
-    get_raw_docs()
+
+
 
 
