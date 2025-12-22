@@ -1,22 +1,8 @@
 import tomllib
+import typer
 from typing import Annotated, Optional
 from pathlib import Path
-import typer
-import os
-
-def check_setup():
-    assert os.path.isfile('.invest'), ".invest is missing are you in the project root directory"
-
-    file = open(".invest", "r")
-    lines = file.readlines()
-
-    set = False 
-    for line in lines: 
-        if line.startswith('SETUP'):
-            if line.strip().endswith("yes"):
-                set = True
-
-    assert set, "Looks like you haven't setup the database yet" 
+from enum import Enum
 
 
 app = typer.Typer()
@@ -30,20 +16,20 @@ def markdown(
             file_okay=True,
             dir_okay=False,
             resolve_path=True,
-            callback=check_setup, 
         ),
-    ],
-    verbose: bool =  False,
-    ):
-
+    ]
+):
+    print(config)
     if config is None:
         print("No config provided") 
         raise typer.Abort()
-    if config.is_file() and config.suffix == "toml":
+    if config.is_file() and config.suffix == ".toml":
+        print('reading file')
         with config.open( "rb") as f:
             con_par = tomllib.load(f)
     else: 
         print("Couldn't find the file. Where's the toml at?")
+        raise typer.Abort()
 
-
+    Starts = Enum("starts_with", con_par["starts_with"])
 
