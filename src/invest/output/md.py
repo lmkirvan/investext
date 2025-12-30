@@ -1,10 +1,16 @@
 import tomllib
 import typer
 import duckdb as ddb
-from typing import Annotated, Optional, List, Any
+from typing import Annotated, Optional, List, Any, Iterable
 from pathlib import Path
 from enum import Enum
 
+# this works okay, but it takes about 1 second on only 3 documents. I think I need to profile this
+# and see if this can be sped up. maybe just make the lines in the initial set up step 
+# as users will probably be a little more forgiving for that step.
+# could page this as well in some way? 
+
+                
 
 class Line:
     def __init__(self, tag: Enum, content:str):
@@ -18,15 +24,15 @@ class Line:
         return(str(self.tag))
 
 #there has to be a way to make the types work here, but not for me to figure out at the moment
-def get_lines(): #-> Optional[List[str]]:
-
+def get_lines(): 
     con = ddb.connect(".data.db")
-    docs = con.sql("SELECT text FROM main;").fetchall() 
+    docs = con.sql("SELECT text FROM main;").fetchall()
     con.close()
 
     docs = [doc[0].split("\n") for doc in docs]
     return docs
-        
+
+# I think that this has to come before the commands?
 app = typer.Typer()
 
 @app.command()
@@ -52,11 +58,13 @@ def markdown(
         print("Couldn't find the file. Where's the toml at?")
         raise typer.Abort()
 
-    Tags = Enum("starts_with", con_par["starts_with"])
+    print(con_par)
+
+    # could do, starts with, ends with and contains?
+    # eventually need to be able to first filter the database in the config? 
+    Tags = Enum("1", con_par["1"])
 
     docs = get_lines()
-
-    print(docs[9])
 
     def tag_line(line: str):
         line = line.strip()
@@ -77,6 +85,11 @@ def markdown(
         return res
 
 
+    for t in Tags:
+        print(f"the tag {t.name} has value {t.value}")
 
+
+
+    #lines = [ tag_lines(doc) for doc in docs]
 
 

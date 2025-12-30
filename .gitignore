@@ -12,6 +12,7 @@ todo.md
 sample/
 data.json
 .data.db
+.temp.db
 .invest
 parse.toml
 parking_lot.py
