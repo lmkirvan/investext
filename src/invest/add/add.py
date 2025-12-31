@@ -31,6 +31,7 @@ def add(
         ), 
     ],
     extension: str = "txt",
+    db_name: str = ".data.db", # I only really want this for testing? 
     verbose: bool = False,
     overwrite: bool = False,
 ):
@@ -57,30 +58,20 @@ def add(
     data = pl.concat(dfs)
     data = data.with_row_index(name = "id")
     data = data.with_columns(
-                name_key = pl.concat_str(['root', 'file'], separator="/"))
-    data = data.with_columns(
+        pl.concat_str(['root', 'file'], separator="/").alias("name_key"),
         pl.lit(datetime.now()).alias("date_added")
     )
 
-    db_path = Path(".data.db")
+    db_path = Path(db_name)
 
     #if there is no database we have to build one from scratch here. 
     if not db_path.exists():
-        con = ddb.connect(".data.db")
-        con.sql(
-            """
-            CREATE TABLE docs (
-            id INTEGER,
-            name_key VARCHAR PRIMARY KEY,
-            date_added TIMESTAMP_S,
-            file VARCHAR,
-            text varchar)
-            INSERT into docs SELECT * FROM data
-            """
-        )
+        con = ddb.connect(db_path)
+        con.sql("CREATE TABLE docs AS SELECT * FROM data")
+        con.sql("ALTER TABLE docs ADD PRIMARY KEY (name_key);")
         con.close()
     else:
-        con = ddb.connect(".data.db")
+        con = ddb.connect(db_path)
         ow = "OR REPLACE" if overwrite else "OR IGNORE"
         con.sql(f"INSERT {ow} INTO docs SELECT * FROM data")
         con.close()
