@@ -27,20 +27,22 @@ def add(
             exists=True,
             file_okay=True,
             dir_okay=True,
-            resolve_path=True,
+            resolve_path=False,
         ), 
     ],
     extension: str = "txt",
-    db_name: str = ".data.db", # I only really want this for testing? 
+    db_name: str = ".data.db", # out put in the calling directory? I think so.
     verbose: bool = False,
     overwrite: bool = False,
 ):
-
+    
     if verbose:
         v = print
     else:
         v = None
- 
+
+
+
     structure = {}
     for root, _, file in path.walk(on_error=v):
         flgl = [True if f.endswith(extension) else False for f in file]
@@ -62,7 +64,12 @@ def add(
         pl.lit(datetime.now()).alias("date_added")
     )
 
-    db_path = Path(db_name)
+    # this creates a db in the parent directory of the documents directory
+    # I think that this makes sense, but we should say in the readme that
+    # this works with a project folder and probably should have some kind of
+    # environment variable or something to keep the root of the directory available. 
+    db_path = path.parent.absolute() / db_name 
+
 
     #if there is no database we have to build one from scratch here. 
     if not db_path.exists():
