@@ -9,7 +9,7 @@ import sys
 
 search_str = """    
     select count( score)  
-    from  (select *, fts_main_docs.match_bm25(name_key, 'trump', fields :='text') 
+    from  (select *, fts_main_docs.match_bm25(id, 'trump', fields :='text') 
     as score from docs);
 """
 
@@ -35,15 +35,15 @@ def test_add(docs_directory):
     rows = subprocess.check_output(
         ["duckdb", "-ascii", str(docs_directory / ".data.db"), "SELECT count(id) FROM docs"])
     rows_str = rows.decode('utf-8')
-    assert rows_str == 'count(id)\n3\n' 
+    assert rows_str == 'count(id)\n3778\n' 
     result = runner.invoke(app, ['add', str(docs_directory/ "002") ])
     assert result.exit_code == 0 
     rows = subprocess.check_output(
         ["duckdb", "-ascii", str(docs_directory / ".data.db"), "SELECT count(id) FROM docs"])
     rows_str = rows.decode('utf-8')
-    assert rows_str == 'count(id)\n9\n'
+    assert rows_str == 'count(id)\n4025\n'
     rows_str = subprocess.check_output(
         ["duckdb", "-ascii", str(docs_directory / ".data.db"), search_str])
-    assert rows_str ==  b'count(score)\n8\n'
+    assert rows_str ==  b'count(score)\n34\n'
 
 

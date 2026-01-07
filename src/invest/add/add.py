@@ -16,7 +16,7 @@ def read_whole_folder(root: str, items: List[str]) -> Dict:
     text = []
     p = Path(root)
     for i in items:
-        text.append((p / i).read_text())
+        text.append((p / i).read_text().split(sep="\n"))
     return {"root": root, 'file': items, "text": text}
 
 @app.command()
@@ -53,30 +53,37 @@ def add(
         res[k] = read_whole_folder(k, v)
     
     dfs = []
-    for v in res.values(): dfs.append(pl.from_dicts(v))
+    for v in res.values(): dfs.append(pl.from_dicts(v))    
     
     # maybe add some more metadata stuff here? 
     # ntokens, file size 
     # for now just keep doing everything but eventuall can have the logic be to first
     # intersect before making the data
     data = pl.concat(dfs)
-    data = data.with_row_index(name = "id")
     data = data.with_columns(
-        pl.concat_str(['root', 'file'], separator="/").alias("name_key"),
         pl.lit(datetime.now()).alias("date_added")
+    )
+
+    data = data.explode('text')
+    data = data.with_columns(
+        pl.int_range(0, pl.len()).over(["root", "file"]).alias("line_id")
+    )
+
+    data = data.with_columns(
+        pl.concat_str(["root", "file", "line_id"], separator="-").alias("id")
     )
 
     # this creates a db in the parent directory of the documents directory
     # I think that this makes sense, but we should say in the readme that
     # this works with a project folder and probably should have some kind of
-    # environment variable or something to keep the root of the directory available. 
+    # environment variable or something to keep the root of the directory available.
     db_path = path.parent.absolute() / db_name 
 
     #if there is no database we have to build one from scratch here. 
     if not db_path.exists():
         con = ddb.connect(db_path)
         con.sql("CREATE TABLE docs AS SELECT * FROM data")
-        con.sql("ALTER TABLE docs ADD PRIMARY KEY (name_key);")
+        con.sql("ALTER TABLE docs ADD PRIMARY KEY (id);")
     else:
         con = ddb.connect(db_path)
         ow = "OR REPLACE" if overwrite else "OR IGNORE"
@@ -87,6 +94,6 @@ def add(
     #The FTS index will not update automatically when input table changes. A workaround of this limitation can be recreating the index to refresh
     # we need to run this pragma add index thing either way, when we add or create for the first time
 
-    con.sql("PRAGMA create_fts_index('docs', 'name_key', 'text', overwrite=1)")
+    con.sql("PRAGMA create_fts_index('docs', 'id', 'text', overwrite=1)")
     con.close()
 
