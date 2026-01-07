@@ -6,6 +6,14 @@ import shutil
 import pytest
 import sys
 
+
+search_str = """    
+    select count( score)  
+    from  (select *, fts_main_docs.match_bm25(name_key, 'trump', fields :='text') 
+    as score from docs);
+"""
+
+
 @pytest.fixture
 def docs_directory(tmp_path_factory):
     source_data = Path(__file__).parent / "data"
@@ -33,5 +41,9 @@ def test_add(docs_directory):
     rows = subprocess.check_output(
         ["duckdb", "-ascii", str(docs_directory / ".data.db"), "SELECT count(id) FROM docs"])
     rows_str = rows.decode('utf-8')
-    assert rows_str == 'count(id)\n9\n' 
+    assert rows_str == 'count(id)\n9\n'
+    rows_str = subprocess.check_output(
+        ["duckdb", "-ascii", str(docs_directory / ".data.db"), search_str])
+    assert rows_str ==  b'count(score)\n8\n'
+
 
