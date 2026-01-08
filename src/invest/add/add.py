@@ -1,12 +1,12 @@
 import typer
+import duckdb as ddb 
+import polars as pl 
+import os
+
 from typing import List, Annotated, Any, Dict
 from rich import print
 from pathlib import Path
-import duckdb as ddb 
-import polars as pl 
 from datetime import datetime
-
-app  = typer.Typer()
 
 def bin_mask(l: List[Any], p: List[bool]) -> List[Any]:
     assert len(l) == len(p)
@@ -18,6 +18,8 @@ def read_whole_folder(root: str, items: List[str]) -> Dict:
     for i in items:
         text.append((p / i).read_text().split(sep="\n"))
     return {"root": root, 'file': items, "text": text}
+
+app  = typer.Typer()
 
 @app.command()
 def add(
@@ -73,18 +75,19 @@ def add(
         pl.concat_str(["root", "file", "line_id"], separator="-").alias("id")
     )
 
-    # this creates a db in the parent directory of the documents directory
-    # I think that this makes sense, but we should say in the readme that
-    # this works with a project folder and probably should have some kind of
-    # environment variable or something to keep the root of the directory available.
-    db_path = path.parent.absolute() / db_name 
-
+    # this is a quick and dirty thing to make sure that you are working in the parent folder
+    # probably this should be some kind of environment variable setup thing eventually
+    # but I think that I can defer that for now TODO?
+    dbparent = path.parent.absolute() 
+    db_path = dbparent / db_name
     #if there is no database we have to build one from scratch here. 
     if not db_path.exists():
+        os.environ["INVEST_ROOT"] = str(dbparent)
         con = ddb.connect(db_path)
         con.sql("CREATE TABLE docs AS SELECT * FROM data")
         con.sql("ALTER TABLE docs ADD PRIMARY KEY (id);")
     else:
+
         con = ddb.connect(db_path)
         ow = "OR REPLACE" if overwrite else "OR IGNORE"
         con.sql(f"INSERT {ow} INTO docs SELECT * FROM data")
