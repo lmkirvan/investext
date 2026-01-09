@@ -16,7 +16,9 @@ def read_whole_folder(root: str, items: List[str]) -> Dict:
     text = []
     p = Path(root)
     for i in items:
-        text.append((p / i).read_text().split(sep="\n"))
+        lines = (p / i).read_text().split(sep="\n")
+        lines = list(map(str.strip, lines))
+        text.append(lines)
     return {"root": root, 'file': items, "text": text}
 
 app  = typer.Typer()
@@ -37,7 +39,6 @@ def add(
     verbose: bool = False,
     overwrite: bool = False,
 ):
-    
     if verbose:
         v = print
     else:
@@ -78,6 +79,7 @@ def add(
     # this is a quick and dirty thing to make sure that you are working in the parent folder
     # probably this should be some kind of environment variable setup thing eventually
     # but I think that I can defer that for now TODO?
+    ### TODO  fix this so it uses the .env variable
     dbparent = path.parent.absolute() 
     db_path = dbparent / db_name
     #if there is no database we have to build one from scratch here. 
