@@ -7,6 +7,7 @@ from typing import List, Annotated, Any, Dict
 from rich import print
 from pathlib import Path
 from datetime import datetime
+from dotenv import load_dotenv
 
 def bin_mask(l: List[Any], p: List[bool]) -> List[Any]:
     assert len(l) == len(p)
@@ -38,7 +39,13 @@ def add(
     db_name: str = ".data.db", # out put in the calling directory? I think so.
     verbose: bool = False,
     overwrite: bool = False,
-):
+): 
+
+    typer.echo(os.environ)
+    load_dotenv()
+    typer.echo(os.environ)
+    assert "INVEST_INIT" in os.environ, "Looks like you have initialized a project, or you're in the wrong directory"
+    
     if verbose:
         v = print
     else:
@@ -80,25 +87,22 @@ def add(
     # probably this should be some kind of environment variable setup thing eventually
     # but I think that I can defer that for now TODO?
     ### TODO  fix this so it uses the .env variable
-    dbparent = path.parent.absolute() 
+    
+    dbparent = Path(os.environ["INVEST_ROOT"])
     db_path = dbparent / db_name
+    print(db_path)
     #if there is no database we have to build one from scratch here. 
     if not db_path.exists():
-        os.environ["INVEST_ROOT"] = str(dbparent)
         con = ddb.connect(db_path)
         con.sql("CREATE TABLE docs AS SELECT * FROM data")
         con.sql("ALTER TABLE docs ADD PRIMARY KEY (id);")
     else:
-
         con = ddb.connect(db_path)
         ow = "OR REPLACE" if overwrite else "OR IGNORE"
         con.sql(f"INSERT {ow} INTO docs SELECT * FROM data")
-
     # From duckdb docs
     #Warning
     #The FTS index will not update automatically when input table changes. A workaround of this limitation can be recreating the index to refresh
     # we need to run this pragma add index thing either way, when we add or create for the first time
-
     con.sql("PRAGMA create_fts_index('docs', 'id', 'text', overwrite=1)")
     con.close()
-

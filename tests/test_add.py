@@ -5,7 +5,7 @@ import subprocess
 import shutil
 import pytest
 import sys
-
+import os
 
 search_str = """    
     select count( score)  
@@ -17,7 +17,7 @@ search_str = """
 @pytest.fixture
 def docs_directory(tmp_path_factory):
     source_data = Path(__file__).parent / "data"
-    dest_data = tmp_path_factory.mktemp("data")
+    dest_data = tmp_path_factory.mktemp("data", numbered = False)
     if source_data.exists():
         shutil.copytree(source_data, dest_data, dirs_exist_ok=True)
     else :
@@ -28,10 +28,13 @@ def docs_directory(tmp_path_factory):
 runner = CliRunner()
 
 def test_add(docs_directory):
+    runner.invoke(app, ["init"] )
     # this tests the make a new database path
     result = runner.invoke(app, ['add', str(docs_directory / "001")])
     assert result.exit_code == 0
-    assert Path(".data.db").exists()
+    database = docs_directory / ".data.db"
+    database_exists = database.exists()
+    assert database_exists == True
     rows = subprocess.check_output(
         ["duckdb", "-ascii", str(docs_directory / ".data.db"), "SELECT count(id) FROM docs"])
     rows_str = rows.decode('utf-8')
