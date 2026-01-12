@@ -16,3 +16,4 @@ data.json
 .invest
 parse.toml
 parking_lot.py
+.env

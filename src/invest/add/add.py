@@ -7,7 +7,7 @@ from typing import List, Annotated, Any, Dict
 from rich import print
 from pathlib import Path
 from datetime import datetime
-from dotenv import load_dotenv
+from dotenv import load_dotenv 
 
 def bin_mask(l: List[Any], p: List[bool]) -> List[Any]:
     assert len(l) == len(p)
@@ -21,6 +21,10 @@ def read_whole_folder(root: str, items: List[str]) -> Dict:
         lines = list(map(str.strip, lines))
         text.append(lines)
     return {"root": root, 'file': items, "text": text}
+
+def first_token(string: str) -> str:
+    loc = string.find(" ")
+    return string[0:loc - 1]
 
 app  = typer.Typer()
 
@@ -41,10 +45,8 @@ def add(
     overwrite: bool = False,
 ): 
 
-    typer.echo(os.environ)
-    load_dotenv()
-    typer.echo(os.environ)
-    assert "INVEST_INIT" in os.environ, "Looks like you have initialized a project, or you're in the wrong directory"
+    load_dotenv(".env")
+    assert os.getenv("INVEST_INIT") == 'yes', "Looks like you have not initialized a project, or you're in the wrong directory"
     
     if verbose:
         v = print
@@ -71,12 +73,13 @@ def add(
     # intersect before making the data
     data = pl.concat(dfs)
     data = data.with_columns(
-        pl.lit(datetime.now()).alias("date_added")
+        pl.lit(datetime.now()).alias("date_added"),
     )
 
     data = data.explode('text')
     data = data.with_columns(
-        pl.int_range(0, pl.len()).over(["root", "file"]).alias("line_id")
+        pl.int_range(0, pl.len()).over(["root", "file"]).alias("line_id"),
+        pl.col('text').str.extract(r"(\S+)", 0).alias("first_token") 
     )
 
     data = data.with_columns(

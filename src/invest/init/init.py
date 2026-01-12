@@ -1,5 +1,4 @@
 import typer
-import os
 from typing import Optional 
 from pathlib import Path
 
@@ -14,7 +13,6 @@ def init(name: Optional[str] = None, force:bool = False) -> None :
         return
     if name is None:
         root = env.parent
-        print(root)
     else: 
         root = env.parent / name
     with open(str(root / ".env"), mode='w') as f:
