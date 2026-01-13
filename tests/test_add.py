@@ -33,8 +33,8 @@ def test_add(docs_directory):
     result = runner.invoke(app, ['add', str(docs_directory / "001")])
     assert result.exit_code == 0
     database = docs_directory / ".data.db"
-    database_exists = database.exists()
-    assert database_exists == True
+    database_exists = data.
+    assert database.is_file() == True
     rows = subprocess.check_output(
         ["duckdb", "-ascii", str(docs_directory / ".data.db"), "SELECT count(id) FROM docs"])
     rows_str = rows.decode('utf-8')

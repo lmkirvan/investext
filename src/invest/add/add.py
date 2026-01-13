@@ -22,10 +22,6 @@ def read_whole_folder(root: str, items: List[str]) -> Dict:
         text.append(lines)
     return {"root": root, 'file': items, "text": text}
 
-def first_token(string: str) -> str:
-    loc = string.find(" ")
-    return string[0:loc - 1]
-
 app  = typer.Typer()
 
 @app.command()
@@ -42,11 +38,13 @@ def add(
     extension: str = "txt",
     db_name: str = ".data.db", # out put in the calling directory? I think so.
     verbose: bool = False,
-    overwrite: bool = False,
+    overwrite: int = 0 ,
 ): 
 
     load_dotenv(".env")
     assert os.getenv("INVEST_INIT") == 'yes', "Looks like you have not initialized a project, or you're in the wrong directory"
+
+    assert overwrite >= 0 and overwrite <=1, "overwrite must be 0 or 1" 
     
     if verbose:
         v = print
@@ -93,7 +91,6 @@ def add(
     
     dbparent = Path(os.environ["INVEST_ROOT"])
     db_path = dbparent / db_name
-    print(db_path)
     #if there is no database we have to build one from scratch here. 
     if not db_path.exists():
         con = ddb.connect(db_path)
@@ -107,5 +104,5 @@ def add(
     #Warning
     #The FTS index will not update automatically when input table changes. A workaround of this limitation can be recreating the index to refresh
     # we need to run this pragma add index thing either way, when we add or create for the first time
-    con.sql("PRAGMA create_fts_index('docs', 'id', 'text', overwrite=1)")
+    con.sql(f"PRAGMA create_fts_index('docs', 'id', 'text', 'first_token', overwrite={overwrite})")
     con.close()
