@@ -38,7 +38,7 @@ def add(
     extension: str = "txt",
     db_name: str = ".data.db", # out put in the calling directory? I think so.
     verbose: bool = False,
-    overwrite: int = 0 ,
+    overwrite: int = 1 ,
 ): 
 
     load_dotenv(".env")
