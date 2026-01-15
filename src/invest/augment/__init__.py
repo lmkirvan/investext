@@ -1,6 +1,7 @@
 import typer
-from .tag import app as tag_app
+
+from .augment import app as augment_app
 
 app = typer.Typer()
 
-app.add_typer(tag_app)
+app.add_typer(augment_app)

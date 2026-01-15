@@ -9,7 +9,7 @@ app = typer.Typer()
 
 app.add_typer(init_app)
 app.add_typer(add_app)
-app.add_typer(augment_app)
-app.add_typer(output_app, name="output")
+app.add_typer(augment_app, name = 'augment')
+app.add_typer(output_app, name='output')
 
 

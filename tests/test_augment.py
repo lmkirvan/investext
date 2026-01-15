@@ -13,7 +13,6 @@ runner = CliRunner()
 
 def test_tag(docs_directory):
     os.chdir(docs_directory)
-    db = docs_directory / '.data.db'
+    db = Path('.data.db')
     #making sure that there is a database when this test is run 
     assert db.exists()
-

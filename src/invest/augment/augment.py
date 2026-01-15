@@ -1,4 +1,16 @@
 import typer
+from .tag import app as tag_app
+
+app = typer.Typer()
+app.add_typer(tag_app)
+
+@app.command()
+def augment():
+    pass
+
+
+
+import typer
 import duckdb as ddb 
 import os
 
@@ -26,10 +38,13 @@ sql_template =  Template(
 )
 
 app  = typer.Typer()
+tag_app = typer.Typer()
+app.add_typer(tag_app)
+
 # this there only reason to limit the search to just certain things? 
 # I kind of think it's way simpler just to run the search on everything 
 # but maybe allowing for some filter conditions makes sense?    
-@app.command()
+@tag_app.command()
 def tag( 
     query_string: str,
     must: bool = False,
