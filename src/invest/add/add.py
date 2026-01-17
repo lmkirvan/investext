@@ -67,8 +67,8 @@ def add(
     
     # maybe add some more metadata stuff here? 
     # ntokens, file size 
-    # for now just keep doing everything but eventuall can have the logic be to first
-    # intersect before making the data
+    # for now just keep doing everything but eventually can have the logic be to first
+    # intersect and only update stuff that changed
     data = pl.concat(dfs)
     data = data.with_columns(
         pl.lit(datetime.now()).alias("date_added"),
@@ -104,5 +104,5 @@ def add(
     #Warning
     #The FTS index will not update automatically when input table changes. A workaround of this limitation can be recreating the index to refresh
     # we need to run this pragma add index thing either way, when we add or create for the first time
-    con.sql(f"PRAGMA create_fts_index('docs', 'id', 'text', 'first_token', overwrite={overwrite})")
+    con.sql(f"PRAGMA create_fts_index('docs', 'id', 'text', 'first_token', overwrite={overwrite}, stopwords='none')")
     con.close()
