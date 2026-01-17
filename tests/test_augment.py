@@ -1,5 +1,6 @@
-
+from invest.main import app
 from typer.testing import CliRunner
+from typer import echo
 from pathlib import Path
 import os
 
@@ -16,3 +17,8 @@ def test_tag(docs_directory):
     db = Path('.data.db')
     #making sure that there is a database when this test is run 
     assert db.exists()
+    
+    result = runner.invoke(app, ["augment", "tag", "'trump'"])
+    
+
+

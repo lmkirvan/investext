@@ -1,56 +1,22 @@
 import typer
-from .tag import app as tag_app
-
-app = typer.Typer()
-app.add_typer(tag_app)
-
-@app.command()
-def augment():
-    pass
-
-
-
-import typer
 import duckdb as ddb 
 import os
 
-from typing import List, Optional
+from typing import List, Optional, Annotated
 from pathlib import Path
 from dotenv import load_dotenv
 from string import Template
 
-
-sql_template =  Template(
-    """
-        SELECT id, score
-        FROM (
-            SELECT *, fts_main_docs.match_bm25(
-                id,
-                ${query_string},
-                fields := ${fields},
-                conjunctinve = ${must}
-            ) AS score
-            FROM docs
-        ) sq
-        WHERE score IS NOT NULL
-        ORDER BY score DESC;
-    """
-)
-
-app  = typer.Typer()
+app = typer.Typer()
 tag_app = typer.Typer()
 app.add_typer(tag_app)
 
-# this there only reason to limit the search to just certain things? 
-# I kind of think it's way simpler just to run the search on everything 
-# but maybe allowing for some filter conditions makes sense?    
 @tag_app.command()
 def tag( 
     query_string: str,
     must: bool = False,
-    fields: Optional[List[str]] = None,
+    fields: Annotated[List[str] | None, typer.Option ] = None,
     add_to_spec: bool = False, 
-        all: bool = False,
     verbose: int = 0 
 ):
     """
@@ -79,11 +45,36 @@ def tag(
     con = ddb.connect(".data.db")
 
     if fields is None:
-        fields = ["text"]
+        fields = ["NULL"]
 
-    filled_template = sql_template.substitute(fields=fields, query_string=query_string)
 
-    return filled_template
+    if must:
+        must_sql = 1
+    else: 
+        must_sql = 0 
+    
+    sql_template =  (
+           f' SELECT id, score\n'
+           f' FROM (\n'
+           f'     SELECT *, fts_main_docs.match_bm25(\n'
+           f'         id,\n'
+           f"         '{query_string}',\n"
+           f"         fields := '{", ".join(fields)}',\n"
+           f'         conjunctive := {must_sql}\n'
+           f'     ) AS score\n'
+           f'     FROM docs\n'
+           f' )\n'
+           f' WHERE score IS NOT NULL\n'
+           f' ORDER BY score DESC;'
+    )
+
+
+    typer.echo(sql_template)
+    
+    query_result = con.sql(sql_template)
+
+    typer.echo(query_result)
+    return 0
 
 
 
