@@ -2,10 +2,10 @@ import typer
 import duckdb as ddb 
 import os
 
-from typing import List, Optional, Annotated
+from .. dbops  import dbops
+from typing import List, Annotated
 from pathlib import Path
 from dotenv import load_dotenv
-from string import Template
 
 app = typer.Typer()
 tag_app = typer.Typer()
@@ -41,39 +41,32 @@ def tag(
 
     dbparent = Path(os.environ["INVEST_ROOT"])
     db_path = dbparent / ".data.db"
-
     con = ddb.connect(".data.db")
 
     if fields is None:
         fields = ["NULL"]
-
-
     if must:
         must_sql = 1
     else: 
         must_sql = 0 
     
     sql_template =  (
-           f' SELECT id, score\n'
-           f' FROM (\n'
-           f'     SELECT *, fts_main_docs.match_bm25(\n'
-           f'         id,\n'
-           f"         '{query_string}',\n"
-           f"         fields := '{", ".join(fields)}',\n"
-           f'         conjunctive := {must_sql}\n'
-           f'     ) AS score\n'
-           f'     FROM docs\n'
-           f' )\n'
-           f' WHERE score IS NOT NULL\n'
-           f' ORDER BY score DESC;'
+        f' SELECT id, {query_string}\n'
+        f' FROM (\n'
+        f'     SELECT *, fts_main_docs.match_bm25(\n'
+        f'         id,\n'
+        f"         '{query_string}',\n"
+        f"         fields := '{", ".join(fields)}',\n"
+        f'         conjunctive := {must_sql}\n'
+        f'     ) AS  {query_string} \n'
+        f'     FROM docs\n'
+        f' )\n'
     )
 
-
     typer.echo(sql_template)
-    
-    query_result = con.sql(sql_template)
-
-    typer.echo(query_result)
+    typer.echo(dbops.add_column_float(sql_template, "docs", query_string)) 
+    #query_result = con.sql(sql_template)
+    #typer.echo(query_result)
     return 0
 
 
