@@ -30,7 +30,7 @@ def tag(
     fields          :   list of str
                         if multiple fields are indexed this will be for supplying them (eventually) 
     add_to_spec     :   bool
-                        this will append the search to your spec file for describing your corpus
+                        this will append the search to your spec file for describing your corpus, if false query prints to st.out
     verbose         :   int
                         if 0- don't print any examples. otherwise print up to n examples. max 10. 
     """
@@ -49,26 +49,45 @@ def tag(
         must_sql = 1
     else: 
         must_sql = 0 
-    
-    sql_template =  (
-        f' SELECT id, {query_string}\n'
-        f' FROM (\n'
-        f'     SELECT *, fts_main_docs.match_bm25(\n'
-        f'         id,\n'
-        f"         '{query_string}',\n"
-        f"         fields := '{", ".join(fields)}',\n"
-        f'         conjunctive := {must_sql}\n'
-        f'     ) AS  {query_string} \n'
-        f'     FROM docs\n'
-        f' )\n'
-    )
+   
+    query = query_string
+    query_col_name = query_string.replace(' ', '_')
 
-    typer.echo(sql_template)
-    typer.echo(dbops.add_column_float(sql_template, "docs", query_string)) 
-    #query_result = con.sql(sql_template)
-    #typer.echo(query_result)
-    return 0
+    tables = con.sql('SHOW TABLES').fetchall() 
+    first_run = ("tags", ) not in tables
 
+    print(tables)
 
+    def query_template() -> str:
+        query_template =  (
+        f"SELECT id, score, '{query_col_name}' as query \n"
+        f'FROM (\n'
+        f'  SELECT *, fts_main_docs.match_bm25(\n'
+        f'      id,\n'
+        f"      '{query}',\n"
+        f"      fields := {", ".join(fields)},\n"
+        f'      conjunctive := {must_sql}\n'
+        f'  ) AS  score \n'
+        f'  FROM docs\n'
+        f'  WHERE score IS NOT NULL\n'
+        f')\n'
+        )
+        return query_template
+
+    if first_run and add_to_spec:
+        final_query = dbops.query_create_table(query_template(), table_name="tags")
+    else: 
+        if add_to_spec:
+            final_query = dbops.insert_query_into(query_template(), table_name="tags")
+        else:
+            final_query = query_template()
+    typer.echo(final_query)
+    if add_to_spec:
+        con.sql(final_query)
+        result = 0 
+    else: 
+        result = con.sql(final_query)
+        typer.echo(result)
+    return result
 
 
