@@ -65,10 +65,9 @@ def add(
     dfs = []
     for v in res.values(): dfs.append(pl.from_dicts(v))    
     
-    # maybe add some more metadata stuff here? 
-    # ntokens, file size 
-    # for now just keep doing everything but eventually can have the logic be to first
-    # intersect and only update stuff that changed
+    # todo maybe add some more metadata stuff here? 
+    # ntokens, file size
+    # todo update with only new stuff if the same folder is accessed twice
     data = pl.concat(dfs)
     data = data.with_columns(
         pl.lit(datetime.now()).alias("date_added"),
@@ -84,10 +83,6 @@ def add(
         pl.concat_str(["root", "file", "line_id"], separator="-").alias("id")
     )
 
-    # this is a quick and dirty thing to make sure that you are working in the parent folder
-    # probably this should be some kind of environment variable setup thing eventually
-    # but I think that I can defer that for now TODO?
-    ### TODO  fix this so it uses the .env variable
     
     dbparent = Path(os.environ["INVEST_ROOT"])
     db_path = dbparent / db_name

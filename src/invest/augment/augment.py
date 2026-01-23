@@ -3,7 +3,7 @@ import duckdb as ddb
 import os
 
 from .. dbops  import dbops
-from typing import List, Annotated
+from typing import List, Annotated, Optional
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -16,8 +16,7 @@ def tag(
     query_string: str,
     must: bool = False,
     fields: Annotated[List[str] | None, typer.Option ] = None,
-    add_to_spec: bool = False, 
-    verbose: int = 0 
+    add_to_spec: bool = False
 ):
     """
     tag an indexed field in the database. the tag will then be available for use 
@@ -35,12 +34,14 @@ def tag(
                         if 0- don't print any examples. otherwise print up to n examples. max 10. 
     """
 
-    # this should be a callback I think need to consult the docs on that
+    #todo https://typer.tiangolo.com/tutorial/arguments/envvar/
+    # all this enironvment variable stuff should probably be done as cli arguments 
+    # that are filled as in the docs linked  above
     load_dotenv(".env")
     assert os.getenv("INVEST_INIT") == 'yes', "Looks like you have not initialized a project, or you're in the wrong directory"
 
     dbparent = Path(os.environ["INVEST_ROOT"])
-    db_path = dbparent / ".data.db"
+    assert os.getcwd() == str(dbparent), "Are you in the root of your project?" 
     con = ddb.connect(".data.db")
 
     if fields is None:
@@ -55,8 +56,6 @@ def tag(
 
     tables = con.sql('SHOW TABLES').fetchall() 
     first_run = ("tags", ) not in tables
-
-    print(tables)
 
     def query_template() -> str:
         query_template =  (
@@ -81,7 +80,7 @@ def tag(
             final_query = dbops.insert_query_into(query_template(), table_name="tags")
         else:
             final_query = query_template()
-    typer.echo(final_query)
+    
     if add_to_spec:
         con.sql(final_query)
         result = 0 
@@ -89,5 +88,41 @@ def tag(
         result = con.sql(final_query)
         typer.echo(result)
     return result
+
+
+@tag_app.command()
+def starts_with(
+    starts_with : Annotated[ List[str], typer.Argument(
+        help="match the first token of a line a keyword"
+    )],
+    fields: Annotated[List[str] | None, typer.Option ] = None,
+    add_to_spec: bool = False
+):
+    """
+    Used to pull information out the text and make it part of the 
+    metadata for the document. You can do this in two ways. starts_with matches the first
+    token in a line and then caputures the remainder of the line as a key value pair. 
+    Or you can provide a keyvalue pair with a name and a regex. This will result in a 
+    new column in the main docs database with the captured content. 
+    """
+    pass
+
+
+@tag_app.command()
+def recapture(
+    capture: Annotated[ List[str], typer.Argument(
+        help="a string pair of KEY=REGEX"
+    )],
+    fields: Annotated[List[str] | None, typer.Option ] = None,
+    add_to_spec: bool = False
+):
+    """
+    Used to pull information out the text and make it part of the 
+    metadata for the document. You can do this in two ways. starts_with matches the first
+    token in a line and then caputures the remainder of the line as a key value pair. 
+    Or you can provide a keyvalue pair with a name and a regex. This will result in a 
+    new column in the main docs database with the captured content. 
+    """
+    pass
 
 

@@ -55,26 +55,3 @@ def insert_query_into(query: str, table_name: str, columns: Optional[List[str]] 
     
     return insert_statement
 
-
-def add_column_float(query:str, table_name:str, colname:str):
-    """
-    Wraps a SELECT statement into an INSERT INTO statement.
-    
-    Args:
-        query (str): The SELECT statement providing the data.
-        table_name (str): The existing table to receive the data.
-        columns (list, optional): A list of column names in the target table.
-        
-    Returns:
-        str: The complete INSERT INTO SQL statement.
-    """
-    # Remove trailing semicolons from the inner query
-    clean_query = query.strip().rstrip(';')
-    # Format columns if provided (e.g., "(col1, col2, col3)")
-    alter_statement  = (
-        f"ALTER TABLE {table_name} ADD {colname} FLOAT;\n"
-        f"INSERT OR REPLACE INTO {table_name} BY NAME (\n"
-        f"{clean_query} AS {colname});"
-    )
-    
-    return alter_statement

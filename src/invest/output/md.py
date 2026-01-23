@@ -1,7 +1,7 @@
 import tomllib
 import typer
 import duckdb as ddb
-from typing import Annotated, Optional, List, Any, Iterable
+from typing import Annotated, Optional, List 
 from pathlib import Path
 from enum import Enum
 
@@ -9,8 +9,6 @@ from enum import Enum
 # and see if this can be sped up. maybe just make the lines in the initial set up step 
 # as users will probably be a little more forgiving for that step.
 # could page this as well in some way? 
-
-                
 
 class Line:
     def __init__(self, tag: Enum, content:str):
