@@ -13,27 +13,15 @@ app.add_typer(tag_app)
 
 @tag_app.command()
 def tag( 
-    query_string: str,
-    must: bool = False,
-    fields: Annotated[List[str] | None, typer.Option ] = None,
-    add_to_spec: bool = False
+    query_string: str = typer.Argument(help="a keyword search string using bm25" ),
+    must: Annotated[bool, typer.Option(help="require all words to appear")] = False,   
+    fields: Annotated[ Optional[List[str]], typer.Option(help="Which text fields? Defaults to all") ] = None,
+    add_to_spec: Annotated[bool, typer.Option("Save your search to a log and the database")] = True
 ):
     """
     tag an indexed field in the database. the tag will then be available for use 
     in outputing to markdown and will be stored in a table of saved searches.
-
-    query_string    :   str 
-                        a keyword search string using bm25. 
-    must            :   bool
-                        require all words to appear
-    fields          :   list of str
-                        if multiple fields are indexed this will be for supplying them (eventually) 
-    add_to_spec     :   bool
-                        this will append the search to your spec file for describing your corpus, if false query prints to st.out
-    verbose         :   int
-                        if 0- don't print any examples. otherwise print up to n examples. max 10. 
     """
-
     #todo https://typer.tiangolo.com/tutorial/arguments/envvar/
     # all this enironvment variable stuff should probably be done as cli arguments 
     # that are filled as in the docs linked  above

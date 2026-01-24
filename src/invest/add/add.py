@@ -38,7 +38,8 @@ def add(
     extension: str = "txt",
     db_name: str = ".data.db", # out put in the calling directory? I think so.
     verbose: bool = False,
-    overwrite: int = 1 ,
+    overwrite: int = 1,
+    #todo should I put a field in here to label the doc type? like "emails" or something like that 
 ): 
 
     load_dotenv(".env")
