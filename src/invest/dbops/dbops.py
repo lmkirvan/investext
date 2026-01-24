@@ -55,3 +55,32 @@ def insert_query_into(query: str, table_name: str, columns: Optional[List[str]] 
     
     return insert_statement
 
+def left_join_into(query: str, into_table: str, by: str):
+    """
+    Wraps a SELECT statement into an INSERT INTO statement.
+    
+    Args:
+        query (str): The SELECT statement providing the data.
+        table_name (str): The existing table to receive the data.
+        columns (list, optional): A list of column names in the target table.
+        
+    Returns:
+        str: The complete INSERT INTO SQL statement.
+    """
+
+    # Remove trailing semicolons from the inner query
+    clean_query = query.strip().rstrip(';')
+    
+    # Format columns if provided (e.g., "(col1, col2, col3)")
+    
+    column_str = ""
+    if columns is not None:
+        column_str = f" ({', '.join(columns)})" 
+        
+    insert_statement = (
+        f"INSERT INTO {table_name}{column_str}\n"
+        f"{clean_query};"
+    )
+    
+    return insert_statement
+

@@ -1,6 +1,7 @@
 import typer
 import duckdb as ddb 
 import os
+import string
 
 from .. dbops  import dbops
 from typing import List, Annotated, Optional
@@ -8,28 +9,35 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 app = typer.Typer()
+
+@app.callback()
+def main():
+    load_dotenv(".env")
+    assert os.getenv("INVEST_INIT") == 'yes', \
+    "Looks like you have not initialized a project, or you're in the wrong directory"
+    dbparent = Path(os.environ["INVEST_ROOT"])
+    assert os.getcwd() == str(dbparent), "Are you in the root of your project?"
+
 tag_app = typer.Typer()
 app.add_typer(tag_app)
 
 @tag_app.command()
 def tag( 
     query_string: str = typer.Argument(help="a keyword search string using bm25" ),
-    must: Annotated[bool, typer.Option(help="require all words to appear")] = False,   
+    must: Annotated[bool, typer.Option(help="require all words to appear")] = False,
     fields: Annotated[ Optional[List[str]], typer.Option(help="Which text fields? Defaults to all") ] = None,
     add_to_spec: Annotated[bool, typer.Option("Save your search to a log and the database")] = True
 ):
     """
-    tag an indexed field in the database. the tag will then be available for use 
-    in outputing to markdown and will be stored in a table of saved searches.
+    tag an indexed field in the database. the tag will then be available for use
+    in outputing to markdown and will be stored in a table of saved searches
     """
-    #todo https://typer.tiangolo.com/tutorial/arguments/envvar/
-    # all this enironvment variable stuff should probably be done as cli arguments 
-    # that are filled as in the docs linked  above
-    load_dotenv(".env")
-    assert os.getenv("INVEST_INIT") == 'yes', "Looks like you have not initialized a project, or you're in the wrong directory"
 
-    dbparent = Path(os.environ["INVEST_ROOT"])
-    assert os.getcwd() == str(dbparent), "Are you in the root of your project?" 
+    #todo https://typer.tiangolo.com/tutorial/arguments/envvar/
+    # all this enironvment variable stuff should probably be done as cli arguments
+    # that are filled as in the docs linked  above
+    # I think you just run load dotenv as a callback before any commands to make sure you have them? 
+     
     con = ddb.connect(".data.db")
 
     if fields is None:
@@ -78,22 +86,48 @@ def tag(
     return result
 
 
+
 @tag_app.command()
-def starts_with(
-    starts_with : Annotated[ List[str], typer.Argument(
+def starts(
+    starts : Annotated[ List[str], typer.Argument(
         help="match the first token of a line a keyword"
     )],
-    fields: Annotated[List[str] | None, typer.Option ] = None,
     add_to_spec: bool = False
 ):
     """
     Used to pull information out the text and make it part of the 
-    metadata for the document. You can do this in two ways. starts_with matches the first
+    metadata for the document. You can do this in two ways. starts matches the first
     token in a line and then caputures the remainder of the line as a key value pair. 
     Or you can provide a keyvalue pair with a name and a regex. This will result in a 
     new column in the main docs database with the captured content. 
-    """
-    pass
+    """     
+    con = ddb.connect(".data.db")
+
+    start_list = []
+    for start in starts:
+        start_list.append(f"(^{start})(.*)")
+
+
+    def query_template(starts) -> str:
+        query_template =  (
+        f"SELECT \n"
+        f"  ID,\n" 
+        f"regexp_extract(text, '{starts}', ['key', 'value']) as starts_with\n"
+        f"FROM docs"
+        )
+        return query_template
+
+
+    if add_to_spec:
+        con.sql(final_query)
+        result = 0 
+    else: 
+        result = con.sql(final_query)
+        typer.echo(result)
+    return result
+
+
+
 
 
 @tag_app.command()
@@ -106,7 +140,7 @@ def recapture(
 ):
     """
     Used to pull information out the text and make it part of the 
-    metadata for the document. You can do this in two ways. starts_with matches the first
+    metadata for the document. You can do this in two ways. starts matches the first
     token in a line and then caputures the remainder of the line as a key value pair. 
     Or you can provide a keyvalue pair with a name and a regex. This will result in a 
     new column in the main docs database with the captured content. 

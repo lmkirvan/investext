@@ -43,7 +43,8 @@ def add(
 ): 
 
     load_dotenv(".env")
-    assert os.getenv("INVEST_INIT") == 'yes', "Looks like you have not initialized a project, or you're in the wrong directory"
+    assert os.getenv("INVEST_INIT") == 'yes',\
+    "Looks like you have not initialized a project, or you're in the wrong directory"
 
     assert overwrite >= 0 and overwrite <=1, "overwrite must be 0 or 1" 
     
