@@ -1,7 +1,7 @@
 import typer
 import duckdb as ddb 
 import os
-import string
+import polars as pl
 
 from .. dbops  import dbops
 from typing import List, Annotated, Optional
@@ -9,24 +9,17 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 app = typer.Typer()
-
-@app.callback()
-def main():
-    load_dotenv(".env")
-    assert os.getenv("INVEST_INIT") == 'yes', \
-    "Looks like you have not initialized a project, or you're in the wrong directory"
-    dbparent = Path(os.environ["INVEST_ROOT"])
-    assert os.getcwd() == str(dbparent), "Are you in the root of your project?"
-
 tag_app = typer.Typer()
 app.add_typer(tag_app)
+start_app = typer.Typer()
+app.add_typer(start_app)
 
 @tag_app.command()
 def tag( 
     query_string: str = typer.Argument(help="a keyword search string using bm25" ),
+    fields: Annotated[ Optional[List[str]], typer.Argument(help="Which text fields? Defaults to all") ] = None,
     must: Annotated[bool, typer.Option(help="require all words to appear")] = False,
-    fields: Annotated[ Optional[List[str]], typer.Option(help="Which text fields? Defaults to all") ] = None,
-    add_to_spec: Annotated[bool, typer.Option("Save your search to a log and the database")] = True
+    add_to_spec: Annotated[bool, typer.Option(help="Save your search to a log and the database")] = True
 ):
     """
     tag an indexed field in the database. the tag will then be available for use
@@ -85,14 +78,11 @@ def tag(
         typer.echo(result)
     return result
 
-
-
-@tag_app.command()
+@start_app.command()
 def starts(
-    starts : Annotated[ List[str], typer.Argument(
-        help="match the first token of a line a keyword"
-    )],
-    add_to_spec: bool = False
+    starts: Annotated[ List[str],
+        typer.Argument(help="match the first token of a line a keyword")],
+    add_to_spec: Annotated[bool, typer.Option(help="Save your search to a log and the database")] = False
 ):
     """
     Used to pull information out the text and make it part of the 
@@ -101,30 +91,37 @@ def starts(
     Or you can provide a keyvalue pair with a name and a regex. This will result in a 
     new column in the main docs database with the captured content. 
     """     
+    
     con = ddb.connect(".data.db")
 
     start_list = []
     for start in starts:
-        start_list.append(f"(^{start})(.*)")
-
+        start_list.append(f"(^{start.lower()})(.*)")
 
     def query_template(starts) -> str:
         query_template =  (
         f"SELECT \n"
         f"  ID,\n" 
-        f"regexp_extract(text, '{starts}', ['key', 'value']) as starts_with\n"
-        f"FROM docs"
+        f"  regexp_extract(text.lower(), '{starts}', ['key', 'value']) as starts_with\n"
+        f"FROM docs\n"
+        f"WHERE struct_extract(starts_with, 'key') != ''"
         )
         return query_template
 
+    results = []
+    for starts in start_list:
+        results.append(pl.read_database(query_template(starts), connection = con))
+     
 
-    if add_to_spec:
-        con.sql(final_query)
-        result = 0 
-    else: 
-        result = con.sql(final_query)
-        typer.echo(result)
-    return result
+    return 0
+
+    #if add_to_spec:
+    #    con.sql(final_query)
+    #    result = 0 
+    #else: 
+    #    result = con.sql(final_query)
+    #    typer.echo(result)
+    #return result
 
 
 
