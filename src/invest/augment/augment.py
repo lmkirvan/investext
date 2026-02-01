@@ -130,11 +130,9 @@ def starts(
     return result
 
 
-
-
 @tag_app.command()
 def recapture(
-    regex: Annotated[ List[str], typer.Argument(
+    patterns: Annotated[ List[str], typer.Argument(
         help="a string pair of KEY=REGEX"
     )],
     fields: Annotated[List[str] | None, typer.Option ] = None,
@@ -147,33 +145,28 @@ def recapture(
     Or you can provide a keyvalue pair with a name and a regex. This will result in a 
     new column in the main docs database with the captured content. 
     """
+    
     con = ddb.connect(".data.db")
 
-    def valid_regex(regex:str) -> bool :
-        try:
-            re.compile(regex)
-            return True
-        except:
-            return False
-
-    assert valid_regex(regex), "Your regex didn't compile") 
-
-
-
     tables = con.sql('SHOW TABLES').fetchall() 
-    first_run = ("keys") not in tables
- 
-    def query_template(starts) -> str:
+    first_run = ("keys") not in tables 
+
+    key_values = []
+    for pair in patterns:
+        key, value = pair.split("=")
+        key_values.append((key, value))
+
+    def query_template(key, value, regex) -> str:
         query_template =  (
         f"SELECT \n"
-        f"  ID,\n" 
-        f"  regexp_extract(text.lower(), '{starts}', ['key', 'value']) as starts_with\n"
+        f"ID,\n"
+        f"'{key}' as key"
+        f"'{value}' as regex" 
+        f"  regexp_extract(text.lower(), '{regex}', ['key', 'value']) as key_value\n"
         f"FROM docs\n"
         f"WHERE struct_extract(starts_with, 'key') != ''"
         )
         return query_template
-
-
 
   #  if first_run and add_to_spec:
   #      final_query = dbops.query_create_table(query_template(tarts_re), table_name="tags")
