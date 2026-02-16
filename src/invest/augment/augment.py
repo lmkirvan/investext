@@ -1,7 +1,5 @@
 import typer
 import duckdb as ddb 
-import polars as pl
-import re
 
 from .. dbops  import dbops
 from typing import List, Annotated, Optional
@@ -11,6 +9,23 @@ tag_app = typer.Typer()
 app.add_typer(tag_app)
 start_app = typer.Typer()
 app.add_typer(start_app)
+
+def use_template(template:str, table_name:str, conn: ddb.DuckDBPyConnection, first_run:bool, add_to_spec:bool):
+    if first_run and add_to_spec:
+        final_query = dbops.query_create_table(template, table_name=table_name)
+    else: 
+        if add_to_spec:
+            final_query = dbops.insert_query_into(template, table_name=table_name)
+        else:
+            final_query = template
+    if add_to_spec:
+        # handle add to spec here 
+        conn.sql(final_query)
+        result = 0 
+    else:
+        result = conn.sql(final_query)
+        typer.echo(result)
+    return result
 
 @tag_app.command()
 def tag( 
@@ -40,7 +55,7 @@ def tag(
    
     query = query_string
     query_col_name = query_string.replace(' ', '_')
-
+    
     tables = con.sql('SHOW TABLES').fetchall() 
     first_run = ("tags") not in tables
 
@@ -60,21 +75,10 @@ def tag(
         )
         return query_template
 
-    if first_run and add_to_spec:
-        final_query = dbops.query_create_table(query_template(), table_name="tags")
-    else: 
-        if add_to_spec:
-            final_query = dbops.insert_query_into(query_template(), table_name="tags")
-        else:
-            final_query = query_template()
-    
-    if add_to_spec:
-        con.sql(final_query)
-        result = 0 
-    else: 
-        result = con.sql(final_query)
-        typer.echo(result)
-    return result
+    filled = query_template()
+    res = use_template(filled, 'tags', con, first_run, add_to_spec)
+    return res
+
 
 
 @start_app.command()
@@ -84,109 +88,78 @@ def starts(
     add_to_spec: Annotated[bool, typer.Option(help="Save your search to a log and the database")] = False
 ):
     """
-    Used to pull information out the text and make it part of the 
-    metadata for the document. You can do this in two ways. starts matches the first
-    token in a line and then caputures the remainder of the line as a key value pair. 
-    Or you can provide a keyvalue pair with a name and a regex. This will result in a 
-    new column in the main docs database with the captured content. 
+    Grab lines that start with a string. These are stored in a the lines table as pattern and match.  
     """     
     
     con = ddb.connect(".data.db")
-
     starts_re = (f"(^{starts.lower()})(.*)")
-    
-    tables = con.sql('SHOW TABLES').fetchall() 
-    first_run = ("keys") not in tables
+    tables = con.sql("SHOW TABLES").fetchall() 
+    first_run = ("lines") not in tables
  
     def query_template(starts) -> str:
         query_template =  (
         f"SELECT \n"
-        f"  ID,\n" 
-        f"  regexp_extract(text.lower(), '{starts}', ['key', 'value']) as starts_with\n"
+        f"  ID,\n"
+        f"  regexp_extract(text.lower(), '{starts}', ['pattern', 'match']) as starts_with\n"
         f"FROM docs\n"
-        f"WHERE struct_extract(starts_with, 'key') != ''"
+        f"WHERE struct_extract(starts_with, 'pattern') != ''"
         )
         return query_template
 
-    if first_run and add_to_spec:
-        final_query = dbops.query_create_table(query_template(starts_re), table_name="tags")
-    else: 
-        if add_to_spec:
-            final_query = dbops.insert_query_into(
-                query_template(starts_re),
-                table_name="tags"
-            )
-        else:
-            final_query = query_template(starts_re)
-    
-    if add_to_spec:
-        con.sql(final_query)
-        # log to spec here. 
-        result = 0 
-    else: 
-        result = con.sql(final_query)
-        typer.echo(result)
-    
-    return result
+    filled = query_template(starts_re)
+    res = use_template(filled, 'lines', con, first_run, add_to_spec)
+    return res
 
 
 @tag_app.command()
 def recapture(
-    patterns: Annotated[ List[str], typer.Argument(
-        help="a string pair of KEY=REGEX"
-    )],
-    fields: Annotated[List[str] | None, typer.Option ] = None,
-    add_to_spec: bool = False
+    pattern: Annotated[ str, typer.Argument(
+        help="a string pair of KEY=REGEX")],
+    field: Annotated[str | None, typer.Option ] = None,
+    add_to_spec: bool = False,
+    all: bool = True
 ):
     """
-    Used to pull information out the text and make it part of the 
-    metadata for the document. You can do this in two ways. starts matches the first
-    token in a line and then caputures the remainder of the line as a key value pair. 
-    Or you can provide a keyvalue pair with a name and a regex. This will result in a 
-    new column in the main docs database with the captured content. 
+    Capture the occurrences of a regex and add them to a table called keys. Will capture all (default) unless all is set to False. If all is set to false, captures only the first one. TODO change the interface so you can also specify a capture group integer maybe, or a separate function recapture_group() 
     """
     
     con = ddb.connect(".data.db")
-
     tables = con.sql('SHOW TABLES').fetchall() 
     first_run = ("keys") not in tables 
 
-    key_values = []
-    for pair in patterns:
-        key, value = pair.split("=")
-        key_values.append((key, value))
-
-    def query_template(key, value, regex) -> str:
+    if all:
+        _all = "_all"
+    else:
+        _all = ""
+    if field == None:
+        _field = "text"
+    else:
+        _field = field
+    try:
+        key, value = pattern.split("=")
+    except: 
+        typer.echo("You didn't pass in a KEY=VALUE pair, try again")
+        return 1
+      
+    def query_template(key: str, value:str, regex:str, field:str, all:str) -> str:
         query_template =  (
         f"SELECT \n"
-        f"ID,\n"
-        f"'{key}' as key"
-        f"'{value}' as regex" 
-        f"  regexp_extract(text.lower(), '{regex}', ['key', 'value']) as key_value\n"
+        f"  ID,\n"
+        f"  '{key}' as key,\n"
+        f"  '{value}' as regex,\n" 
+        f"  regexp_extract{all}({field}.lower(), '{regex}', ['key', 'regex']) as key_value\n"
         f"FROM docs\n"
-        f"WHERE struct_extract(starts_with, 'key') != ''"
+        f"WHERE struct_extract(key_value, 'key') != ''"
         )
         return query_template
 
-  #  if first_run and add_to_spec:
-  #      final_query = dbops.query_create_table(query_template(tarts_re), table_name="tags")
-  #  else: 
-  #      if add_to_spec:
-  #          final_query = dbops.insert_query_into(
-  #              query_template(regex),
-  #              table_name="tags"
-  #          )
-  #      else:
-  #          final_query = query_template(regex)
-  #  
-  #  if add_to_spec:
-  #      con.sql(final_query)
-  #      # log to spec here. 
-  #      result = 0 
-  #  else: 
-  #      result = con.sql(final_query)
-  #      typer.echo(result)
-  #  
-  #  return result
+    filled = query_template(
+            key=key,
+            value=value,
+            regex=value,
+            field=_field,
+            all=_all)
+    res = use_template(filled, 'keys', con, first_run, add_to_spec)
 
+    return res
 

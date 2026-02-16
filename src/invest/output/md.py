@@ -5,6 +5,9 @@ from typing import Annotated, Optional, List
 from pathlib import Path
 from enum import Enum
 
+
+# [table][field][dest][*key][*value]
+
 # this works okay, but it takes about 1 second on only 3 documents. I think I need to profile this
 # and see if this can be sped up. maybe just make the lines in the initial set up step 
 # as users will probably be a little more forgiving for that step.
@@ -82,12 +85,7 @@ def markdown(
             res.append(tag_line(line))
         return res
 
-
     for t in Tags:
         print(f"the tag {t.name} has value {t.value}")
-
-
-
-    #lines = [ tag_lines(doc) for doc in docs]
 
 
