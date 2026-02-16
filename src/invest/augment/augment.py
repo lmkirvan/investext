@@ -56,7 +56,7 @@ def tag(
     query_col_name = query_string.replace(' ', '_')
     
     tables = con.sql('SHOW TABLES').fetchall() 
-    first_run = ("tags") not in tables
+    first_run = ("tags",) not in tables
 
     def query_template() -> str:
         query_template =  (
@@ -93,7 +93,7 @@ def starts(
     con = ddb.connect(".data.db")
     starts_re = (f"(^{starts.lower()})(.*)")
     tables = con.sql("SHOW TABLES").fetchall() 
-    first_run = ("lines") not in tables
+    first_run = ("lines",) not in tables
  
     def query_template(starts) -> str:
         query_template =  (
@@ -111,7 +111,7 @@ def starts(
 
 
 @tag_app.command()
-def recapture(
+def match(
     pattern: Annotated[ str, typer.Argument(
         help="a string pair of KEY=REGEX")],
     fields: Annotated[ Optional[List[str]], typer.Argument(help="Which text fields? Defaults to all") ] = None,
@@ -160,4 +160,58 @@ def recapture(
         first_run = False
 
     return res
+
+
+
+@tag_app.command()
+def locate(
+    pattern: Annotated[ str, typer.Argument(
+        help="a string pair of KEY=REGEX")],
+    fields: Annotated[ Optional[List[str]], typer.Argument(help="Which text fields? Defaults to all") ] = None,
+    add_to_spec: bool = False
+):
+    """
+    Capture the line numbers for the occurrences of a regex and add them to a table called keys. Will capture all (default) unless all is set to False. If all is set to false, captures only the first one. TODO change the interface so you can also specify a capture group integer maybe, or a separate function recapture_group() 
+    """
+    
+    con = ddb.connect(".data.db")
+    tables = con.sql('SHOW TABLES').fetchall() 
+    first_run = ("locations",) not in tables 
+    if fields == None:
+        _fields = ["text"]
+    else:
+        _fields = fields
+    try:
+        key, value = pattern.split("=")
+    except: 
+        typer.echo("You didn't pass in a KEY=VALUE pair, try again")
+        return 1
+      
+    def query_template(key: str, value:str, regex:str, field:str) -> str:
+        query_template =  (
+        f"SELECT \n"
+        f"  ID,\n"
+        f"  '{key}' as key,\n"
+        f"  '{value}' as regex,\n" 
+        f"  instr(regexp_extract({field}.lower(), '{regex}')) as location\n"
+        f"FROM docs\n"
+        f"WHERE  match;"
+        )
+        return query_template
+
+    res = [] 
+
+    for field in _fields:
+        filled = query_template(
+            key=key,
+            value=value,
+            regex=value,
+            field=field
+        )
+        
+        res.append( use_template(filled, 'location', con, first_run, add_to_spec)) 
+        first_run = False
+
+    return res
+
 
