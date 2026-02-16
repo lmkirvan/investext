@@ -115,7 +115,8 @@ def starts(
 def recapture(
     pattern: Annotated[ str, typer.Argument(
         help="a string pair of KEY=REGEX")],
-    field: Annotated[str | None, typer.Option ] = None,
+    fields: Annotated[ Optional[List[str]], typer.Argument(help="Which text fields? Defaults to all") ] = None,
+
     add_to_spec: bool = False,
     all: bool = True
 ):
@@ -131,10 +132,10 @@ def recapture(
         _all = "_all"
     else:
         _all = ""
-    if field == None:
-        _field = "text"
+    if fields == None:
+        _fields = ["text"]
     else:
-        _field = field
+        _fields = fields
     try:
         key, value = pattern.split("=")
     except: 
@@ -147,19 +148,22 @@ def recapture(
         f"  ID,\n"
         f"  '{key}' as key,\n"
         f"  '{value}' as regex,\n" 
-        f"  regexp_extract{all}({field}.lower(), '{regex}', ['key', 'regex']) as key_value\n"
+        f"  regexp_extract{all}({field}.lower(), '{regex}', ['key', 'value']) as key_value\n"
         f"FROM docs\n"
         f"WHERE struct_extract(key_value, 'key') != ''"
         )
         return query_template
 
-    filled = query_template(
+    res = [] 
+    for field in _fields:
+        filled = query_template(
             key=key,
             value=value,
             regex=value,
-            field=_field,
+            field=field,
             all=_all)
-    res = use_template(filled, 'keys', con, first_run, add_to_spec)
+ 
+        res.append( use_template(filled, 'keys', con, first_run, add_to_spec)) 
 
     return res
 
