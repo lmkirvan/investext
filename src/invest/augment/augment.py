@@ -19,7 +19,6 @@ def use_template(template:str, table_name:str, conn: ddb.DuckDBPyConnection, fir
         else:
             final_query = template
     if add_to_spec:
-        # handle add to spec here 
         conn.sql(final_query)
         result = 0 
     else:
@@ -116,22 +115,15 @@ def recapture(
     pattern: Annotated[ str, typer.Argument(
         help="a string pair of KEY=REGEX")],
     fields: Annotated[ Optional[List[str]], typer.Argument(help="Which text fields? Defaults to all") ] = None,
-
-    add_to_spec: bool = False,
-    all: bool = True
+    add_to_spec: bool = False
 ):
     """
-    Capture the occurrences of a regex and add them to a table called keys. Will capture all (default) unless all is set to False. If all is set to false, captures only the first one. TODO change the interface so you can also specify a capture group integer maybe, or a separate function recapture_group() 
+    Capture the line numbers for the occurrences of a regex and add them to a table called keys. Will capture all (default) unless all is set to False. If all is set to false, captures only the first one. TODO change the interface so you can also specify a capture group integer maybe, or a separate function recapture_group() 
     """
     
     con = ddb.connect(".data.db")
     tables = con.sql('SHOW TABLES').fetchall() 
-    first_run = ("keys") not in tables 
-
-    if all:
-        _all = "_all"
-    else:
-        _all = ""
+    first_run = ("keys",) not in tables 
     if fields == None:
         _fields = ["text"]
     else:
@@ -142,28 +134,30 @@ def recapture(
         typer.echo("You didn't pass in a KEY=VALUE pair, try again")
         return 1
       
-    def query_template(key: str, value:str, regex:str, field:str, all:str) -> str:
+    def query_template(key: str, value:str, regex:str, field:str) -> str:
         query_template =  (
         f"SELECT \n"
         f"  ID,\n"
         f"  '{key}' as key,\n"
         f"  '{value}' as regex,\n" 
-        f"  regexp_extract{all}({field}.lower(), '{regex}', ['key', 'value']) as key_value\n"
+        f"  regexp_matches({field}.lower(), '{regex}') as match\n"
         f"FROM docs\n"
-        f"WHERE struct_extract(key_value, 'key') != ''"
+        f"WHERE  match;"
         )
         return query_template
 
     res = [] 
+
     for field in _fields:
         filled = query_template(
             key=key,
             value=value,
             regex=value,
-            field=field,
-            all=_all)
- 
+            field=field
+        )
+        
         res.append( use_template(filled, 'keys', con, first_run, add_to_spec)) 
+        first_run = False
 
     return res
 
